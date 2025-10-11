@@ -94,6 +94,22 @@ def main():
             except socket.error as e:
                 print(f"  ✗ Error sending packet: {e}")
             
+            # Wait for reply and validate it
+            try:
+                data, addr = sock.recvfrom(1024)
+                if len(data) != 16:
+                    print(f"  ✗ Unexpected reply size: {len(data)} bytes")
+                else:
+                    r_seq, r_payload, r_crc = struct.unpack(">IQI", data)
+                    calc = calculate_crc32(data[:12])  # CRC over seq+payload
+                    ok = (calc == r_crc)
+                    print(f"  ← Reply from {addr}")
+                    print(f"    seq={r_seq}, payload=0x{r_payload:016X}, "
+                        f"crc=0x{r_crc:08X}, crc_ok={ok}")
+            except socket.timeout:
+                print("  (no reply)")
+
+
             print("  Waiting for STM32 to process...")
             time.sleep(2)
             print()

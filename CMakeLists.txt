@@ -29,4 +29,5 @@ target_sources(app PRIVATE src/main.c
                            src/led.c
                            src/net.c
                            src/control.c
-                            src/bitmask.c)
+                            src/bitmask.c
+                            src/crc32.c)
