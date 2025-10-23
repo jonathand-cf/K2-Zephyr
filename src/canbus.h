@@ -1,70 +1,27 @@
-#ifndef CANBUS_H
-#define CANBUS_H
-
-#include <zephyr/kernel.h>
+#pragma once
+#include <zephyr/device.h>
 #include <zephyr/drivers/can.h>
-#include <stdint.h>
 
-/**
- * @brief Initialize the CAN bus at 500 kbps
- *
- * Sets CAN timing and starts the controller.
- * Must be called before any send_* functions.
- *
- * @return 0 on success, negative error code on failure
- */
-int canbus_init(void);
+/* VESC CAN commands (utdrag) */
+enum vesc_can_cmd {
+    VESC_CAN_SET_DUTY              = 0,
+    VESC_CAN_SET_CURRENT           = 1,
+    VESC_CAN_SET_CURRENT_BRAKE     = 2,
+    VESC_CAN_SET_RPM               = 3,
+    VESC_CAN_SET_POS               = 4,
+    VESC_CAN_SET_CURRENT_REL       = 10,
+    VESC_CAN_SET_CURRENT_BRAKE_REL = 11,
+};
 
-/**
- * @brief Send a test CAN frame (legacy function)
- *
- * For initial verification of CAN wiring.
- *
- * @return 0 on success, negative error code on failure
- */
-int send_test_frame(void);
+/* Init av CAN (starter i NORMAL) */
+int  canbus_init(void);
 
-/**
- * @brief Send an "alive" heartbeat to the VESC
- *
- * Should be sent every ~100 ms to prevent timeout.
- *
- * @param controller_id VESC CAN ID (1–255)
- * @return 0 on success, negative error code on failure
- */
-int send_alive(int controller_id);
+/* VESC-sending: controller_id = VESC sin CAN ID (0..255) */
+int  vesc_set_duty   (uint8_t controller_id, float duty);      // [-1.0..+1.0]
+int  vesc_set_current(uint8_t controller_id, float amp);       // A
+int  vesc_set_brake  (uint8_t controller_id, float amp);       // A (brems)
+int  vesc_set_rpm    (uint8_t controller_id, int32_t rpm);     // RPM (heltall)
+int  vesc_set_pos    (uint8_t controller_id, int32_t pos);     // valgfri
 
-/**
- * @brief Send an RPM command over CAN
- *
- * @param controller_id VESC CAN ID (1–255)
- * @param rpm Target motor RPM
- * @return 0 on success, negative error code on failure
- */
-int send_set_rpm(int controller_id, int32_t rpm);
-
-/**
- * @brief Send a current command (torque control)
- *
- * Sends a float current (amps) to the VESC using the
- * COMM_SET_CURRENT (command 1) CAN frame.
- *
- * @param vesc_id VESC CAN ID (1–255)
- * @param amps Desired motor current (A)
- * @return 0 on success, negative error code on failure
- */
-int send_set_current(uint8_t vesc_id, float amps);
-
-/**
- * @brief Send a braking current command
- *
- * Sends a float current (amps) to brake the motor using
- * COMM_SET_CURRENT_BRAKE (command 2) CAN frame.
- *
- * @param vesc_id VESC CAN ID (1–255)
- * @param brake_amps Desired braking current (A)
- * @return 0 on success, negative error code on failure
- */
-int send_set_current_brake(uint8_t vesc_id, float brake_amps);
-
-#endif // CANBUS_H
+/* Valgfri: send rå VESC-kommando (int32 payload) */
+int  vesc_send_u32(enum vesc_can_cmd cmd, uint8_t controller_id, int32_t val);

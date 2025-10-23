@@ -1,158 +1,91 @@
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/can.h>
-#include <zephyr/logging/log.h>
-#include <string.h>
-#include <stdint.h>
 #include "canbus.h"
-
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(canbus, LOG_LEVEL_INF);
 
-// Local CAN device handle
-static const struct device *can_dev = NULL;
+static const struct device *can_dev;
 
-/**
- * @brief CAN transmit callback
- */
-static void tx_callback(const struct device *dev, int error, void *user_data)
+/* 29-bit Extended ID: (CMD << 8) | controller_id */
+static inline uint32_t vesc_eid(uint8_t cmd, uint8_t cid)
 {
-    const char *sender = user_data;
-    if (error) {
-        LOG_ERR("CAN send failed [%d] from %s", error, sender);
-    } else {
-        LOG_INF("CAN frame sent OK from %s", sender);
-    }
+    return ((uint32_t)cmd << 8) | (uint32_t)cid;
 }
 
-/**
- * @brief Initialize CAN bus at 500 kbps
- */
+static inline void put_u32_be(uint8_t *dst, int32_t v)
+{
+    dst[0] = (uint8_t)(v >> 24);
+    dst[1] = (uint8_t)(v >> 16);
+    dst[2] = (uint8_t)(v >>  8);
+    dst[3] = (uint8_t)(v >>  0);
+}
+
 int canbus_init(void)
 {
-    LOG_INF("Initializing CAN...");
-
     can_dev = DEVICE_DT_GET(DT_NODELABEL(can1));
     if (!device_is_ready(can_dev)) {
-        LOG_ERR("CAN device not ready");
-        return -1;
+        LOG_ERR("CAN not ready");
+        return -ENODEV;
     }
-
-    // Example timing for 500 kbps on 48MHz clock (adjust if needed)
-    struct can_timing timing = {
-        .sjw = 1,
-        .prop_seg = 1,
-        .phase_seg1 = 13,
-        .phase_seg2 = 2,
-        .prescaler = 6
-    };
-
-    int ret = can_set_timing(can_dev, &timing);
-    if (ret) {
-        LOG_ERR("Failed to set CAN timing: %d", ret);
-        return ret;
-    }
-
+    int ret = can_set_mode(can_dev, CAN_MODE_NORMAL);
+    if (ret) { LOG_ERR("can_set_mode=%d", ret); return ret; }
     ret = can_start(can_dev);
-    if (ret) {
-        LOG_ERR("Failed to start CAN controller: %d", ret);
-        return ret;
-    }
+    if (ret) { LOG_ERR("can_start=%d", ret); return ret; }
 
-    LOG_INF("CAN initialized successfully at 500kbps");
+    enum can_state st; struct can_bus_err_cnt cnt;
+    if (!can_get_state(can_dev, &st, &cnt)) {
+#if KERNEL_VERSION_MAJOR >= 4
+        LOG_INF("CAN ready: state=%d REC=%u TEC=%u", st, cnt.rx_err_cnt, cnt.tx_err_cnt);
+#else
+        LOG_INF("CAN ready: state=%d REC=%u TEC=%u", st, cnt.rx_err_cnt, cnt.tx_err_cnt);
+#endif
+    }
     return 0;
 }
 
-/**
- * @brief Simple test frame (legacy)
- */
-int send_test_frame(void)
+int vesc_send_u32(enum vesc_can_cmd cmd, uint8_t controller_id, int32_t val)
 {
-    if (!can_dev) {
-        LOG_ERR("CAN not initialized");
-        return -ENODEV;
-    }
+    if (!can_dev) return -ENODEV;
 
-    struct can_frame frame = {
-        .id = 0x223,  // Example: VESC ID 68 + CMD=3 (set RPM)
-        .dlc = 8,
-        .flags = 0
+    struct can_frame f = {
+        .id    = vesc_eid((uint8_t)cmd, controller_id),  // 29-bit EID
+        .dlc   = 4,
+        .flags = CAN_FRAME_IDE                           // EXTENDED!
     };
+    put_u32_be(f.data, val);
 
-    int32_t rpm = 2000;
-    frame.data[0] = (rpm >> 24) & 0xFF;
-    frame.data[1] = (rpm >> 16) & 0xFF;
-    frame.data[2] = (rpm >> 8) & 0xFF;
-    frame.data[3] = rpm & 0xFF;
-    memset(&frame.data[4], 0, 4);
-
-    LOG_INF("Sending test frame to VESC (RPM=%d)", rpm);
-    return can_send(can_dev, &frame, K_FOREVER, tx_callback, "test");
-}
-
-/**
- * @brief Helper: encode 32-bit big-endian integer
- */
-static inline void put_i32_be(uint8_t *dst, int32_t v)
-{
-    dst[0] = (uint8_t)((v >> 24) & 0xFF);
-    dst[1] = (uint8_t)((v >> 16) & 0xFF);
-    dst[2] = (uint8_t)((v >> 8) & 0xFF);
-    dst[3] = (uint8_t)((v >> 0) & 0xFF);
-}
-
-/**
- * @brief Helper: build extended CAN ID for VESC commands
- */
-static inline uint32_t vesc_eid(uint8_t cmd, uint8_t vesc_id)
-{
-    return ((uint32_t)cmd << 8) | vesc_id;
-}
-
-/**
- * @brief Send a current command (drive current)
- */
-int send_set_current(uint8_t vesc_id, float amps)
-{
-    if (!can_dev) {
-        LOG_ERR("CAN not initialized");
-        return -ENODEV;
+    int ret = can_send(can_dev, &f, K_MSEC(200), NULL, NULL);
+    if (ret) {
+        LOG_ERR("VESC send cmd=%u id=%u ret=%d", (unsigned)cmd, (unsigned)controller_id, ret);
     }
-
-    const uint8_t CMD_SET_CURRENT = 1;
-    int32_t scaled = (int32_t)(amps * 1000.0f);
-
-    struct can_frame fr = {
-        .id = vesc_eid(CMD_SET_CURRENT, vesc_id),
-        .dlc = 4,
-        .flags = CAN_FRAME_IDE // use 29-bit extended ID
-    };
-
-    put_i32_be(fr.data, scaled);
-
-    LOG_INF("Sending SET_CURRENT %.2fA to VESC ID=%d", amps, vesc_id);
-    return can_send(can_dev, &fr, K_NO_WAIT, tx_callback, "set_current");
+    return ret;
 }
 
-/**
- * @brief Send a braking current command
- */
-int send_set_current_brake(uint8_t vesc_id, float brake_amps)
+int vesc_set_duty(uint8_t id, float duty)
 {
-    if (!can_dev) {
-        LOG_ERR("CAN not initialized");
-        return -ENODEV;
-    }
+    /* VESC forventer duty * 100000 (signert 32-bit) */
+    int32_t v = (int32_t)(duty * 100000.0f);
+    return vesc_send_u32(VESC_CAN_SET_DUTY, id, v);
+}
 
-    const uint8_t CMD_SET_CURRENT_BRAKE = 2;
-    int32_t scaled = (int32_t)(brake_amps * 1000.0f);
+int vesc_set_current(uint8_t id, float amp)
+{
+    /* VESC forventer A * 1000 */
+    int32_t v = (int32_t)(amp * 1000.0f);
+    return vesc_send_u32(VESC_CAN_SET_CURRENT, id, v);
+}
 
-    struct can_frame fr = {
-        .id = vesc_eid(CMD_SET_CURRENT_BRAKE, vesc_id),
-        .dlc = 4,
-        .flags = CAN_FRAME_IDE
-    };
+int vesc_set_brake(uint8_t id, float amp)
+{
+    int32_t v = (int32_t)(amp * 1000.0f);
+    return vesc_send_u32(VESC_CAN_SET_CURRENT_BRAKE, id, v);
+}
 
-    put_i32_be(fr.data, scaled);
+int vesc_set_rpm(uint8_t id, int32_t rpm)
+{
+    return vesc_send_u32(VESC_CAN_SET_RPM, id, rpm);   // u-skalert RPM
+}
 
-    LOG_INF("Sending BRAKE_CURRENT %.2fA to VESC ID=%d", brake_amps, vesc_id);
-    return can_send(can_dev, &fr, K_NO_WAIT, tx_callback, "set_brake");
+int vesc_set_pos(uint8_t id, int32_t pos)
+{
+    return vesc_send_u32(VESC_CAN_SET_POS, id, pos);
 }
