@@ -368,12 +368,12 @@ installZephyr ()
             
             # Install dependencies via Homebrew
             log "Installing dependencies via Homebrew..." 1
-            brew install cmake ninja gperf python3 ccache qemu dtc wget libmagic
+            brew install cmake ninja gperf python@3.12 ccache qemu dtc wget libmagic
             
             # Create virtual environment if it doesn't exist
             if [ ! -d ~/zephyrproject/.venv ]; then
                 echo "Creating virtual environment..."
-                python3 -m venv ~/zephyrproject/.venv
+                python3.12 -m venv ~/zephyrproject/.venv
             fi
 
             # Activate virtual environment
