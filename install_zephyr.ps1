@@ -15,30 +15,54 @@ Write-Host "Installing dependencies via winget..." -ForegroundColor Green
 winget install --id Kitware.CMake --silent --accept-package-agreements --accept-source-agreements
 winget install --id Ninja-build.Ninja --silent --accept-package-agreements --accept-source-agreements
 winget install --id GnuWin32.Gperf --silent --accept-package-agreements --accept-source-agreements
-winget install --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements
+winget install --id Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements
 winget install --id Git.Git --silent --accept-package-agreements --accept-source-agreements
 winget install --id GnuWin32.Wget --silent --accept-package-agreements --accept-source-agreements
 winget install --id 7zip.7zip --silent --accept-package-agreements --accept-source-agreements
 winget install --id STMicroelectronics.STM32CubeProgrammer --silent --accept-package-agreements --accept-source-agreements
 
-# Refresh environment variables
+# Refresh environment variables so newly installed tools are visible in this session
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# Prefer Python 3.11 (windows-curses wheel support) but fall back to the default python if needed
+$PythonCommand = "python"
+if (Get-Command py -ErrorAction SilentlyContinue) {
+    py -3.11 --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $PythonCommand = "py -3.11"
+    }
+}
+Write-Host "Using $PythonCommand to manage the virtual environment (Python 3.11 recommended on Windows)." -ForegroundColor Cyan
 
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path "$ZephyrPath\.venv")) {
     Write-Host "Creating virtual environment..." -ForegroundColor Green
     New-Item -ItemType Directory -Force -Path $ZephyrPath | Out-Null
-    python -m venv "$ZephyrPath\.venv"
+    & $PythonCommand -m venv "$ZephyrPath\.venv"
 }
 
 # Activate virtual environment
 Write-Host "Activating virtual environment..." -ForegroundColor Green
-& "$ZephyrPath\.venv\Scripts\Activate.ps1"
+. "$ZephyrPath\.venv\Scripts\Activate.ps1"
+
+# Use the venv's python for all pip operations to avoid PATH surprises
+$VenvPython = Join-Path "$ZephyrPath\.venv\Scripts" "python.exe"
+
+Write-Host "Upgrading pip in the virtual environment..." -ForegroundColor Green
+& $VenvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to upgrade pip inside the virtual environment."
+    exit 1
+}
 
 # Install west if not already installed
 if (-not (Get-Command west -ErrorAction SilentlyContinue)) {
     Write-Host "Installing west 1.5.0..." -ForegroundColor Green
-    pip install west==1.5.0
+    & $VenvPython -m pip install west==1.5.0
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install west."
+        exit 1
+    }
 }
 
 # Initialize workspace if not already initialized
@@ -59,7 +83,18 @@ west zephyr-export
 
 # Install Python dependencies
 Write-Host "Installing Python dependencies..." -ForegroundColor Green
-pip install -r "$ZephyrPath\zephyr\scripts\requirements.txt"
+& $VenvPython -m pip install -r "$ZephyrPath\zephyr\scripts\requirements.txt"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Python dependency installation failed. If the error references 'windows-curses', ensure Python 3.11 is installed."
+    exit 1
+}
+
+Write-Host "Ensuring patool is installed for west sdk..." -ForegroundColor Green
+& $VenvPython -m pip install patool
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to install patool (required by west sdk install)."
+    exit 1
+}
 
 # Install Zephyr SDK
 Write-Host "Installing Zephyr SDK 0.17.4..." -ForegroundColor Green

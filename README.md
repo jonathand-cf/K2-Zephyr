@@ -123,14 +123,79 @@ west sdk install --version 0.17.4
 
 ## Build & flash
 
-Run `build.sh` or inside of `/K2-Zephyr` run:
+Run the build helper for your platform or run `west` directly from the project folder.
+
+- macOS / Linux / WSL / Git Bash:
 
 ```bash
+./build.sh
+# or manually inside the repo
+cd ~/zephyrproject/K2-Zephyr
 west build -b nucleo_f767zi
 west flash
 ```
 
-> **Note**: `west flash` uses STM32CubeProgrammer by default (installed on Windows/macOS). Linux users can install it manually or use OpenOCD fallback.
+- Windows (PowerShell):
+
+Use the included `build.ps1` which performs the equivalent steps in PowerShell. Run from the repository root in PowerShell:
+
+```powershell
+./build.ps1
+# or manually inside PowerShell
+Set-Location "$HOME\zephyrproject\K2-Zephyr"
+# activate venv if needed
+. .\.venv\Scripts\Activate.ps1
+west build -b nucleo_f767zi
+west flash
+```
+
+If you prefer a Unix shell on Windows, run `build.sh` from WSL, Git Bash, or MSYS2.
+
+> **Note**: `west flash` uses STM32CubeProgrammer by default when it is available on your PATH (it's not used unless installed and found). Linux users can install it manually or use OpenOCD fallback.
+
+### STM32CubeProgrammer PATH (if installed from ST website)
+
+If you install STM32CubeProgrammer from ST's website (<https://www.st.com/en/development-tools/stm32cubeprog.html>) the installer may not add the CLI tools to your PATH. If `west flash` doesn't find STM32CubeProgrammer, you can add it manually.
+
+- macOS (example):
+
+1. Find the installed CLI binary (common name: `STM32_Programmer_CLI`).
+
+```bash
+which STM32_Programmer_CLI || find / -name STM32_Programmer_CLI -type f 2>/dev/null
+```
+
+1. Add its directory to your shell profile (example path below, adjust to match the location you discovered):
+
+```bash
+echo 'export PATH="/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+- Linux (example):
+
+1. Find the installed CLI binary (common name: `STM32_Programmer_CLI`).
+
+```bash
+which STM32_Programmer_CLI || find / -name STM32_Programmer_CLI -type f 2>/dev/null
+```
+
+1. Add its directory to your shell profile (example path below, adjust to match the location you discovered):
+
+```bash
+echo 'export PATH="/opt/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+- Windows (example — use the exact install path you have; PowerShell example):
+
+Open System Properties -> Environment Variables and add the STM32CubeProgrammer `bin` directory to your PATH, or use PowerShell:
+
+```powershell
+setx PATH "$env:PATH;C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin"
+```
+
+After adding the path, re-open your shell (or sign out & sign back in on Windows) so `west flash` can detect the STM32CubeProgrammer CLI.
 
 To explicitly use OpenOCD:
 

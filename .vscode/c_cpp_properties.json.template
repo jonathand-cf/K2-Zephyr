@@ -9,7 +9,7 @@
                 "~/zephyrproject/zephyr/include/zephyr",
                 "~/zephyrproject/zephyr/lib/libc/common/include",
                 "~/zephyrproject/zephyr/lib/libc/minimal/include",
-                "~/zephyr-sdk-VERSION/arm-zephyr-eabi/arm-zephyr-eabi/include",
+                "~/zephyr-sdk-0.17.4/arm-zephyr-eabi/arm-zephyr-eabi/include",
                 "~/zephyrproject/zephyr/soc/st/stm32/stm32f7x",
                 "~/zephyrproject/zephyr/soc/st/stm32/common",
                 "~/zephyrproject/zephyr/modules/cmsis",
