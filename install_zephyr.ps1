@@ -24,45 +24,21 @@ winget install --id STMicroelectronics.STM32CubeProgrammer --silent --accept-pac
 # Refresh environment variables so newly installed tools are visible in this session
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-# Prefer Python 3.11 (windows-curses wheel support) but fall back to the default python if needed
-$PythonCommand = "python"
-if (Get-Command py -ErrorAction SilentlyContinue) {
-    py -3.11 --version *> $null
-    if ($LASTEXITCODE -eq 0) {
-        $PythonCommand = "py -3.11"
-    }
-}
-Write-Host "Using $PythonCommand to manage the virtual environment (Python 3.11 recommended on Windows)." -ForegroundColor Cyan
-
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path "$ZephyrPath\.venv")) {
     Write-Host "Creating virtual environment..." -ForegroundColor Green
     New-Item -ItemType Directory -Force -Path $ZephyrPath | Out-Null
-    & $PythonCommand -m venv "$ZephyrPath\.venv"
+    py -3.11 -m venv "$ZephyrPath\.venv"
 }
 
 # Activate virtual environment
 Write-Host "Activating virtual environment..." -ForegroundColor Green
 . "$ZephyrPath\.venv\Scripts\Activate.ps1"
 
-# Use the venv's python for all pip operations to avoid PATH surprises
-$VenvPython = Join-Path "$ZephyrPath\.venv\Scripts" "python.exe"
-
-Write-Host "Upgrading pip in the virtual environment..." -ForegroundColor Green
-& $VenvPython -m pip install --upgrade pip
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to upgrade pip inside the virtual environment."
-    exit 1
-}
-
 # Install west if not already installed
 if (-not (Get-Command west -ErrorAction SilentlyContinue)) {
     Write-Host "Installing west 1.5.0..." -ForegroundColor Green
-    & $VenvPython -m pip install west==1.5.0
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install west."
-        exit 1
-    }
+    pip install west==1.5.0
 }
 
 # Initialize workspace if not already initialized
