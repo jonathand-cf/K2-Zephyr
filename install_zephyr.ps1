@@ -57,6 +57,18 @@ west update
 Write-Host "Exporting Zephyr CMake package..." -ForegroundColor Green
 west zephyr-export
 
+# ERROR MSG ON WINDOWS HERE:
+#Installing Python dependencies from Zephyr requirements...
+#The expression after '&' in a pipeline element produced an object that was not valid. It must result in a command name,
+# a script block, or a CommandInfo object.
+#At C:\Users\Jonathan\K2-Zephyr\install_zephyr.ps1:63 char:7
+#+     & $VenvPython -m pip install -r "$ZephyrPath\zephyr\scripts\requi ...
+#+       ~~~~~~~~~~~
+#    + CategoryInfo          : InvalidOperation: (:) [], ParentContainsErrorRecordException
+#    + FullyQualifiedErrorId : BadExpression
+#
+#PS C:\Users\Jonathan\K2-Zephyr>
+
 # Install Python dependencies
 if (Test-Path "$ZephyrPath\zephyr\scripts\requirements.txt") {
     Write-Host "Installing Python dependencies from Zephyr requirements..." -ForegroundColor Green
