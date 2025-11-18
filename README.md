@@ -4,6 +4,10 @@ Board docs: <https://docs.zephyrproject.org/latest/boards/st/nucleo_f767zi/doc/i
 
 Setup Guide: <https://docs.zephyrproject.org/latest/develop/getting_started/index.html>
 
+- **west**: 1.5.0
+- **Zephyr SDK**: 0.17.4
+- **Python**: 3.12
+
 ## Quick Installation
 
 Install script using `curl`
@@ -29,24 +33,30 @@ You need [winget](https://aka.ms/getwinget) to install dependencies.
 
 ## Manual Installation
 
+- **west**: 1.5.0
+- **Zephyr SDK**: 0.17.4
+- **Python**: 3.12
+
 ### Dependencies
 
 **Windows**: Use [winget](https://aka.ms/getwinget)
 then run this in ps or cmd:
 
 ```bash
-winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip
+winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip STMicroelectronics.STM32CubeProgrammer
 ```
 
->You may need to add the 7zip installation folder to your PATH.
+>You may need to add the 7zip and STM32CubeProgrammer installation folders to your PATH.
 
 **Ubuntu**: Use apt:
 
 ```bash
 sudo apt install --no-install-recommends git cmake ninja-build gperf \
-  ccache dfu-util device-tree-compiler wget python3-dev python3-venv python3-tk \
-  xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
+  ccache dfu-util device-tree-compiler wget python3.12 python3.12-dev python3.12-venv python3-tk \
+  xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1 openocd
 ```
+
+> **Note**: Linux users can install STM32CubeProgrammer manually from [STMicroelectronics](https://www.st.com/en/development-tools/stm32cubeprog.html) for faster flashing. OpenOCD (installed above) works as an alternative.
 
 verify:
 
@@ -59,14 +69,8 @@ dtc --version
 **MacOS**: Use [Homebrew](https://brew.sh/)
 
 ```bash
-brew install cmake ninja gperf python3 python-tk ccache qemu dtc libmagic wget openocd
-```
-
-then set Homebrew Python folder to the path:
-
-```bash
-(echo; echo 'export PATH="'$(brew --prefix)'/opt/python/libexec/bin:$PATH"') >> ~/.zprofile
-source ~/.zprofile
+brew install cmake ninja gperf python@3.12 ccache qemu dtc libmagic wget
+brew install --cask stm32cubeprogrammer
 ```
 
 ### Get Zephyr and install Python dependencies
@@ -74,31 +78,31 @@ source ~/.zprofile
 Using `pip` on *Linux* or *MacOS*:
 
 ```bash
-python3 -m venv ~/zephyrproject/.venv
+python3.12 -m venv ~/zephyrproject/.venv
 source ~/zephyrproject/.venv/bin/activate
-pip install west
+pip install west==1.5.0
 west init ~/zephyrproject
 cd ~/zephyrproject
 west update
 west zephyr-export
 west packages pip --install
 cd ~/zephyrproject/zephyr
-west sdk install
+west sdk install --version 0.17.4
 ```
 
 Using `uv`:
 
 ```bash
 cd ~/zephyrproject
-uv venv --python 3.11
+uv venv --python 3.12
 source .venv/bin/activate
-uv pip install west
+uv pip install west==1.5.0
 west init ~/zephyrproject
 west update
 west zephyr-export
 west packages pip --install
 cd ~/zephyrproject/zephyr
-west sdk install
+west sdk install --version 0.17.4
 ```
 
 in Powershell on *Windows*:
@@ -107,14 +111,14 @@ in Powershell on *Windows*:
 cd $Env:HOMEPATH
 python -m venv zephyrproject\.venv
 zephyrproject\.venv\Scripts\Activate.ps1
-pip install west
+pip install west==1.5.0
 west init zephyrproject
 cd zephyrproject
 west update
 west zephyr-export
 west packages pip --install
 cd $Env:HOMEPATH\zephyrproject\zephyr
-west sdk install
+west sdk install --version 0.17.4
 ```
 
 ## Build & flash
@@ -126,16 +130,24 @@ west build -b nucleo_f767zi
 west flash
 ```
 
-Optionally on WSL or if STM32CubeProgrammer not installed:
+> **Note**: `west flash` uses STM32CubeProgrammer by default (installed on Windows/macOS). Linux users can install it manually or use OpenOCD fallback.
+
+To explicitly use OpenOCD:
 
 ```bash
-west flash -d build/app --runner openocd
+west flash --runner openocd
 ```
 
 Monitor serial (115200 baud):
 
 ```bash
+# Linux
 minicom -D /dev/ttyACM0 -b 115200
+
+# macOS
+minicom -D /dev/tty.usbmodem* -b 115200
+# or use screen
+screen /dev/tty.usbmodem* 115200
 ```
 
 ## vscode config
@@ -152,19 +164,33 @@ In `.vscode` folder, add this and customize to your need
         {
             "name": "Zephyr ARM",
             "includePath": [
-                "${workspaceFolder}/**",
-                "/Users/USERNAME/zephyrproject/zephyr/include",
-                "/Users/USERNAME/zephyrproject/zephyr/include/zephyr",
-                "/Users/USERNAME/zephyrproject/zephyr/lib/libc/common/include",
-                "/Users/USERNAME/zephyrproject/zephyr/lib/libc/minimal/include",
                 "${workspaceFolder}/build/zephyr/include/generated",
-                "/Users/USERNAME/zephyr-sdk-VERSION/arm-zephyr-eabi/arm-zephyr-eabi/include"
+                "${workspaceFolder}/**",
+                "~/zephyrproject/zephyr/include",
+                "~/zephyrproject/zephyr/include/zephyr",
+                "~/zephyrproject/zephyr/lib/libc/common/include",
+                "~/zephyrproject/zephyr/lib/libc/minimal/include",
+                "~/zephyr-sdk-VERSION/arm-zephyr-eabi/arm-zephyr-eabi/include",
+                "~/zephyrproject/zephyr/soc/st/stm32/stm32f7x",
+                "~/zephyrproject/zephyr/soc/st/stm32/common",
+                "~/zephyrproject/zephyr/modules/cmsis",
+                "~/zephyrproject/zephyr/modules/cmsis_6",
+                "~/zephyrproject/modules/hal/stm32/stm32cube/stm32f7xx/soc",
+                "~/zephyrproject/modules/hal/stm32/stm32cube/stm32f7xx/drivers/include",
+                "~/zephyrproject/modules/hal/stm32/stm32cube/common_ll/include"
+            ],
+            "forcedInclude": [
+                "${workspaceFolder}/build/zephyr/include/generated/zephyr/autoconf.h"
             ],
             "defines": [
                 "CONFIG_BOARD_NUCLEO_F767ZI",
-                "__ZEPHYR__=1"
+                "__ZEPHYR__=1",
+                "CONFIG_ARM=1",
+                "CONFIG_CPU_CORTEX_M7=1",
+                "CONFIG_SOC_STM32F767XX=1",
+                "CONFIG_SYS_CLOCK_TICKS_PER_SEC=10000"
             ],
-            "compilerPath": "/Users/USERNAME/zephyr-sdk-VERSION/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc",
+            "compilerPath": "~/zephyr-sdk-VERSION/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-arm"

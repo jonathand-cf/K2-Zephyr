@@ -19,6 +19,7 @@ winget install --id Python.Python.3.12 --silent --accept-package-agreements --ac
 winget install --id Git.Git --silent --accept-package-agreements --accept-source-agreements
 winget install --id GnuWin32.Wget --silent --accept-package-agreements --accept-source-agreements
 winget install --id 7zip.7zip --silent --accept-package-agreements --accept-source-agreements
+winget install --id STMicroelectronics.STM32CubeProgrammer --silent --accept-package-agreements --accept-source-agreements
 
 # Refresh environment variables
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -36,8 +37,8 @@ Write-Host "Activating virtual environment..." -ForegroundColor Green
 
 # Install west if not already installed
 if (-not (Get-Command west -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing west..." -ForegroundColor Green
-    pip install west
+    Write-Host "Installing west 1.5.0..." -ForegroundColor Green
+    pip install west==1.5.0
 }
 
 # Initialize workspace if not already initialized
@@ -61,9 +62,9 @@ Write-Host "Installing Python dependencies..." -ForegroundColor Green
 pip install -r "$ZephyrPath\zephyr\scripts\requirements.txt"
 
 # Install Zephyr SDK
-Write-Host "Installing Zephyr SDK..." -ForegroundColor Green
+Write-Host "Installing Zephyr SDK 0.17.4..." -ForegroundColor Green
 Set-Location "$ZephyrPath\zephyr"
-west sdk install
+west sdk install --version 0.17.4
 
 # Clone K2-Zephyr if not exists
 Set-Location $ZephyrPath

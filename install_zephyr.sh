@@ -30,8 +30,8 @@ OPTIONS:
         Enable verbose output. Can be used multiple times to increase verbosity.
         Level 0 (default): Only essential messages
         Level 1 (-v):      Detailed progress information
-        Level 2 (-vv):     Very detailed output
-        Level 3 (-vvv):    Debug mode with bash trace (set -xv)
+        Level 2 (-v -v):     Very detailed output
+        Level 3 (-v -v -v):    Debug mode with bash trace (set -xv)
 
     -f, --force
         Force reinstallation even if Zephyr is already installed.
@@ -141,6 +141,8 @@ elif [ -d ~/zephyrproject/.venv ] && [ "$force" -eq 1 ]; then
     installZephyr
 elif [ -d ~/zephyrproject/.venv ] && [ "$update" -eq 1 ]; then
     echo "Updating Zephyr installation..."
+    #shellcheck source=/dev/null
+    source ~/zephyrproject/.venv/bin/activate
     cd ~/zephyrproject/zephyr || exit 1
     git pull
     cd ~/zephyrproject || exit 1
@@ -166,13 +168,13 @@ installZephyr ()
             sudo apt-get update && sudo apt-get upgrade -y 
             sudo apt-get install --no-install-recommends git cmake ninja-build gperf \
                 ccache dfu-util device-tree-compiler wget \
-                python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
+                python3.12 python3.12-dev python3.12-venv python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
                 make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1 -y
 
             # Create virtual environment if it doesn't exist
             if [ ! -d ~/zephyrproject/.venv ]; then
                 echo "Creating virtual environment..."
-                python3 -m venv ~/zephyrproject/.venv
+                python3.12 -m venv ~/zephyrproject/.venv
             fi
 
             # Activate virtual environment
@@ -181,8 +183,8 @@ installZephyr ()
 
             # Install west if not already installed
             if ! command -v west &> /dev/null; then
-                echo "Installing west..."
-                pip install west
+                echo "Installing west 1.5.0..."
+                pip install west==1.5.0
             fi
 
             # Initialize workspace if not already initialized
@@ -207,9 +209,9 @@ installZephyr ()
 
             # Installing SDK
             if [ "$skip_sdk" -eq 0 ]; then
-                echo "Installing Zephyr SDK..."
+                echo "Installing Zephyr SDK 0.17.4..."
                 cd ~/zephyrproject/zephyr || exit 1
-                west sdk install
+                west sdk install --version 0.17.4
                 cd ~/zephyrproject || exit 1
             else
                 echo "Skipping SDK installation (--skip-sdk specified)"
@@ -231,12 +233,12 @@ installZephyr ()
             # Dependencies installation for Fedora
             sudo dnf group install "Development Tools" "C Development Tools and Libraries" -y
             sudo dnf install cmake ninja-build gperf dfu-util dtc wget which \
-              python3-pip python3-tkinter xz file python3-devel SDL2-devel -y
+              python3.12 python3.12-devel python3-pip python3-tkinter xz file SDL2-devel -y
 
             # Create virtual environment if it doesn't exist
             if [ ! -d ~/zephyrproject/.venv ]; then
                 echo "Creating virtual environment..."
-                python3 -m venv ~/zephyrproject/.venv
+                python3.12 -m venv ~/zephyrproject/.venv
             fi
 
             # Activate virtual environment
@@ -245,8 +247,8 @@ installZephyr ()
 
             # Install west if not already installed
             if ! command -v west &> /dev/null; then
-                echo "Installing west..."
-                pip install west
+                echo "Installing west 1.5.0..."
+                pip install west==1.5.0
             fi
 
             # Initialize workspace if not already initialized
@@ -271,9 +273,9 @@ installZephyr ()
 
             # Installing SDK
             if [ "$skip_sdk" -eq 0 ]; then
-                echo "Installing Zephyr SDK..."
+                echo "Installing Zephyr SDK 0.17.4..."
                 cd ~/zephyrproject/zephyr || exit 1
-                west sdk install
+                west sdk install --version 0.17.4
                 cd ~/zephyrproject || exit 1
             else
                 echo "Skipping SDK installation (--skip-sdk specified)"
@@ -292,7 +294,7 @@ installZephyr ()
             # Update and install dependencies for Arch/Manjaro
             sudo pacman -Syu -y
             sudo pacman -S git cmake ninja gperf ccache dfu-util dtc wget \
-            python-pip python-setuptools python-wheel tk xz file make -y 
+            python312 python-pip python-setuptools python-wheel tk xz file make -y 
             
             cd ~
             mkdir tmp && cd tmp || exit 1
@@ -311,7 +313,7 @@ installZephyr ()
             # Create virtual environment if it doesn't exist
             if [ ! -d ~/zephyrproject/.venv ]; then
                 echo "Creating virtual environment..."
-                python3 -m venv ~/zephyrproject/.venv
+                python3.12 -m venv ~/zephyrproject/.venv
             fi
 
             # Activate virtual environment
@@ -340,9 +342,9 @@ installZephyr ()
 
             # Installing SDK
             if [ "$skip_sdk" -eq 0 ]; then
-                echo "Installing Zephyr SDK..."
+                echo "Installing Zephyr SDK 0.17.4..."
                 cd ~/zephyrproject/zephyr || exit 1
-                west sdk install
+                west sdk install --version 0.17.4
                 cd ~/zephyrproject || exit 1
             else
                 echo "Skipping SDK installation (--skip-sdk specified)"
@@ -369,6 +371,7 @@ installZephyr ()
             # Install dependencies via Homebrew
             log "Installing dependencies via Homebrew..." 1
             brew install cmake ninja gperf python@3.12 ccache qemu dtc wget libmagic
+            brew install --cask stm32cubeprogrammer
             
             # Create virtual environment if it doesn't exist
             if [ ! -d ~/zephyrproject/.venv ]; then
@@ -382,8 +385,8 @@ installZephyr ()
 
             # Install west if not already installed
             if ! command -v west &> /dev/null; then
-                echo "Installing west..."
-                pip install west
+                echo "Installing west 1.5.0..."
+                pip install west==1.5.0
             fi
 
             # Initialize workspace if not already initialized
@@ -408,9 +411,9 @@ installZephyr ()
 
             # Installing SDK
             if [ "$skip_sdk" -eq 0 ]; then
-                echo "Installing Zephyr SDK..."
+                echo "Installing Zephyr SDK 0.17.4..."
                 cd ~/zephyrproject/zephyr || exit 1
-                west sdk install
+                west sdk install --version 0.17.4
                 cd ~/zephyrproject || exit 1
             else
                 echo "Skipping SDK installation (--skip-sdk specified)"
