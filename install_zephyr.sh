@@ -6,6 +6,7 @@ set -euo pipefail  # Exit on error, undefined variables, and pipe failures
 readonly ZEPHYR_PATH="$HOME/zephyrproject"
 readonly WEST_VERSION="1.5.0"
 readonly SDK_VERSION="0.17.4"
+readonly ZEPHYR_VERSION="v4.2.0"
 readonly PYTHON_MIN_VERSION="3.10"
 readonly PYTHON_PREFERRED="3.11"
 # Global variables
@@ -361,7 +362,7 @@ initialize_workspace() {
             fi
         fi
         
-        west init "$ZEPHYR_PATH"
+        west init "$ZEPHYR_PATH" --mr "$ZEPHYR_VERSION"
         log "Workspace initialized" 1
     else
         log "Workspace already initialized" 1

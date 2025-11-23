@@ -4,6 +4,9 @@
 
 $ErrorActionPreference = "Stop"
 $ZephyrPath = "$HOME\zephyrproject"
+$ZephyrVersion = "v4.2.0"
+$SdkVersion = "0.17.4"
+$WestVersion = "1.5.0"
 
 # 1. Check for Administrator privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -59,8 +62,8 @@ if (-not (Test-Path "$ZephyrPath\.west")) {
     
     Write-Host "Initializing Zephyr workspace..." -ForegroundColor Green
     # Install west globally first to bootstrap
-    pip install west==1.5.0
-    west init $ZephyrPath
+    pip install west==$WestVersion
+    west init $ZephyrPath --mr $ZephyrVersion
 } else {
     Write-Host "Zephyr workspace already initialized." -ForegroundColor Gray
 }
@@ -95,9 +98,9 @@ pip install -r "$ZephyrPath\zephyr\scripts\requirements.txt"
 pip install patool
 
 # 9. Install Zephyr SDK
-Write-Host "Installing Zephyr SDK 0.17.4..." -ForegroundColor Green
+Write-Host "Installing Zephyr SDK $SdkVersion..." -ForegroundColor Green
 # This command works after 'west update' fetches the zephyr repo
-west sdk install --version 0.17.4
+west sdk install --version $SdkVersion
 
 # 10. Clone K2-Zephyr
 if (-not (Test-Path "$ZephyrPath\K2-Zephyr")) {
