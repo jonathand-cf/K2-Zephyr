@@ -1,0 +1,85 @@
+name: Build & Auto Release (Zephyr 4.2 – NUCLEO-F767ZI)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: version
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+          patch=$((patch + 1))
+          new_tag="v$major.$minor.$patch"
+          echo "tag=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Install deps for Zephyr 4.2
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git cmake ninja-build gperf python3-pip \
+            python3-setuptools python3-wheel xz-utils file \
+            make gcc gcc-multilib libsdl2-dev
+
+          pip install west
+
+      - name: Init West & Zephyr 4.2 workspace
+        run: |
+          west init -l .
+          west update
+          west zephyr-export
+          pip install -r zephyr/scripts/requirements.txt
+
+      - name: Build firmware (NUCLEO-F767ZI)
+        run: |
+          west build -b stm32f767zi_nucleo -p always
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/zephyr/*.bin
+            build/zephyr/*.hex
+            build/zephyr/*.elf
+            build/zephyr/*.map
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          name: Release ${{ needs.build.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: |
+            *.bin
+            *.hex
+            *.elf
+            *.map
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
