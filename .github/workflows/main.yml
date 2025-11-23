@@ -39,27 +39,22 @@ jobs:
 
       - name: Create West workspace & fetch Zephyr 4.2
         run: |
-          mkdir workspace
-          cd workspace
-
+          mkdir -p /tmp/ws
+          cd /tmp/ws
           west init
           west update
-
-          # Export Zephyr env
           west zephyr-export
-
-          # Install Python deps
           pip install -r zephyr/scripts/requirements.txt
 
       - name: Add application into workspace
         run: |
-          cd workspace
+          cd /tmp/ws
           mkdir app
           cp -r $GITHUB_WORKSPACE/* app/
 
       - name: Build firmware (NUCLEO-F767ZI)
         run: |
-          cd workspace
+          cd /tmp/ws
           west build -b stm32f767zi_nucleo app
 
       - name: Upload build output
@@ -67,10 +62,10 @@ jobs:
         with:
           name: firmware
           path: |
-            workspace/build/zephyr/*.bin
-            workspace/build/zephyr/*.hex
-            workspace/build/zephyr/*.elf
-            workspace/build/zephyr/*.map
+            /tmp/ws/build/zephyr/*.bin
+            /tmp/ws/build/zephyr/*.hex
+            /tmp/ws/build/zephyr/*.elf
+            /tmp/ws/build/zephyr/*.map
 
   release:
     needs: build
