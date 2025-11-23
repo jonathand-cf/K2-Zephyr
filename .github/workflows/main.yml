@@ -37,6 +37,17 @@ jobs:
 
           pip install west
 
+      - name: Install Zephyr SDK 0.17.4
+        run: |
+          cd /tmp
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
+          tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
+          sudo mv zephyr-sdk-0.17.4 /opt/zephyr-sdk
+          /opt/zephyr-sdk/setup.sh -t all
+
+          echo "ZEPHYR_TOOLCHAIN_VARIANT=zephyr" >> $GITHUB_ENV
+          echo "ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk" >> $GITHUB_ENV
+
       - name: Create West workspace & checkout Zephyr 4.2.0
         run: |
           mkdir -p /tmp/ws
